@@ -8,6 +8,7 @@ import (
 	"test-project/helper"
 	"test-project/types"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 )
 
@@ -24,6 +25,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/register", h.handleRegister).Methods("POST")
 }
 
+// ! Login User
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var user types.LoginUser
 	if err := helper.ParseJson(r, &user); err != nil {
@@ -44,21 +46,27 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	helper.WriteJson(w, http.StatusAccepted, map[string]any{"status": true, "c_msg": fmt.Sprintf("user logged in! welcome %q", user.Email)})
 }
 
+// ! Register User
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	// ! get json payload;
-	var payload types.RegiterPayload
+	var payload types.RegisterPayload
 	if err := helper.ParseJson(r, &payload); err != nil {
 		helper.WriteError(w, http.StatusBadRequest, err)
 	}
-	fmt.Println(payload)
-	// Check if user exists
+	// ! Validate Payload
+	if err := helper.Validate.Struct(payload); err != nil {
+		error := err.(validator.ValidationErrors)
+		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %v", error))
+		return
+	}
+
+	// ! Check if user exists
 	_, err := h.store.GetUserByEmail(payload.Email)
 	if err == nil {
 		log.Println("User already exists!")
 		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("user already exists with email %q", payload.Email))
 		return
 	}
-	// hashedPassowrd, err := password.HashedPassowrd(payload.Password)
 	hashedPassowrd, err := password.HashedPassowrd(payload.Password)
 	if err != nil {
 		log.Println("Unable able to create hash password! :- " + payload.Password)
@@ -74,7 +82,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		log.Println("Not able to create hash password!")
+		log.Println("Not able to create User!")
 		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("not able to create your account at the moment"))
 		return
 	}

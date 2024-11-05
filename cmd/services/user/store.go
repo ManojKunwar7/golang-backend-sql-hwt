@@ -23,6 +23,8 @@ func (s *Store) GetUserByEmail(email string) (*types.User, error) {
 		return nil, err
 	}
 
+	fmt.Println("jwhhwhshshks")
+
 	u := new(types.User)
 	for rows.Next() {
 		u, err = ScanRowIntoUser(rows)
@@ -90,15 +92,10 @@ func (s *Store) GetUserByID(id int) (*types.User, error) {
 }
 
 func (s *Store) CreateUser(user types.User) error {
-	log.Println("user --->	")
-
-	resp, err := s.db.Query("INSERT INTO ecommerce.users (firstName, lastName, email, password) VALUES (?,?,?,?)", user.FirstName, user.LastName, user.Email, user.Password)
-	log.Println("user inserted -->", resp)
-
+	_, err := s.db.Query("INSERT INTO ecommerce.users (firstName, lastName, email, password) VALUES (?,?,?,?)", user.FirstName, user.LastName, user.Email, user.Password)
 	if err != nil {
 		fmt.Println("unable to create user account at the moment", err)
 		return fmt.Errorf("unable to create user account at the moment")
 	}
-
 	return nil
 }
