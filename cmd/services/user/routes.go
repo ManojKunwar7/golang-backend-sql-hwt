@@ -32,18 +32,23 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		helper.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
+	// ! Schema check
+	if err := helper.Validate.Struct(user); err != nil {
+		error := err.(*validator.ValidationErrors)
+		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %v", error))
+	}
 	u, err := h.store.GetUserByEmail(user.Email)
 
 	if err != nil {
 		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("user not found"))
 		return
 	}
-	if !password.CompareHashedPassword(u.Password, []byte(user.Password)) {
+	if !password.CompareHashedPassword([]byte(u.Password), []byte(user.Password)) {
 		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid email or password"))
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "manoj", Value: "kunwar"})
-	helper.WriteJson(w, http.StatusAccepted, map[string]any{"status": true, "c_msg": fmt.Sprintf("user logged in! welcome %q", user.Email)})
+	http.SetCookie(w, &http.Cookie{Name: user.Email, Value: u.Password})
+	helper.WriteJson(w, http.StatusOK, map[string]any{"status": true, "c_msg": fmt.Sprintf("user logged in! welcome %q", user.Email)})
 }
 
 // ! Register User
