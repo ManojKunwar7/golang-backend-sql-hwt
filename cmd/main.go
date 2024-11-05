@@ -30,6 +30,7 @@ func main() {
 	}
 }
 
+// ! Make DB Connection
 func initStorage(db *sql.DB) {
 	err := db.Ping()
 	if err != nil {
