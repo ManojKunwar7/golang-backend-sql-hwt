@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	password "test-project/cmd/services/auth"
+	"test-project/cmd/services/auth_func"
+	"test-project/config"
 	"test-project/helper"
 	"test-project/types"
 
@@ -13,10 +14,10 @@ import (
 )
 
 type Handler struct {
-	store types.Userstore
+	store types.UserStore
 }
 
-func NewHandler(store types.Userstore) *Handler {
+func NewHandler(store types.UserStore) *Handler {
 	return &Handler{store: store}
 }
 
@@ -43,12 +44,25 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("user not found"))
 		return
 	}
-	if !password.CompareHashedPassword([]byte(u.Password), []byte(user.Password)) {
+
+	if !auth_func.CompareHashedPassword([]byte(u.Password), []byte(user.Password)) {
 		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid email or password"))
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: user.Email, Value: u.Password})
-	helper.WriteJson(w, http.StatusOK, map[string]any{"status": true, "c_msg": fmt.Sprintf("user logged in! welcome %q", user.Email)})
+
+	// ! Get JWT Token
+	var secret string = config.ENVS.JWTSecret
+	token, err := auth_func.CreateJWT([]byte(secret), int(u.ID))
+	if err != nil {
+		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("something went wrong"))
+		return
+	}
+	log.Printf("token %s", token)
+	log.Printf("password %s", u.Password)
+	http.SetCookie(w, &http.Cookie{Name: user.Email, Value: token})
+	log.Printf("Cookie Set")
+
+	helper.WriteJson(w, http.StatusOK, map[string]any{"status": true, "token": token, "c_msg": fmt.Sprintf("user logged in! welcome %q", user.Email)})
 }
 
 // ! Register User
@@ -72,7 +86,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("user already exists with email %q", payload.Email))
 		return
 	}
-	hashedPassowrd, err := password.HashedPassowrd(payload.Password)
+	hashedPassword, err := auth_func.HashedPassword(payload.Password)
 	if err != nil {
 		log.Println("Unable able to create hash password! :- " + payload.Password)
 		helper.WriteError(w, http.StatusBadRequest, fmt.Errorf("not able to create your account at the moment"))
@@ -83,7 +97,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		FirstName: payload.FirstName,
 		LastName:  payload.LastName,
 		Email:     payload.Email,
-		Password:  hashedPassowrd,
+		Password:  hashedPassword,
 	})
 
 	if err != nil {

@@ -18,7 +18,7 @@ func NewStore(db *sql.DB) *Store {
 
 func (s *Store) GetUserByEmail(email string) (*types.User, error) {
 	rows, err := s.db.Query("SELECT * FROM users WHERE email = ?", email)
-	log.Println("Received this from db -->", rows)
+	// log.Println("Received this from db -->", rows)
 	if err != nil {
 		return nil, err
 	}
